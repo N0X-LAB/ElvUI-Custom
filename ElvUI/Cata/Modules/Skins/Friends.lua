@@ -49,6 +49,36 @@ local function AcquireInvitePool(pool)
 	end
 end
 
+local selectedWhoName
+
+local function AddWhoFrameGuildInviteButton()
+	if _G.WhoFrameGuildInviteButton then return _G.WhoFrameGuildInviteButton end
+
+	local button = CreateFrame('Button', 'WhoFrameGuildInviteButton', _G.WhoFrame, 'UIPanelButtonTemplate')
+	button:Size(90, 22)
+	button:SetText(_G.GUILD_INVITE or 'Guild Invite')
+	button:SetScript('OnClick', function()
+		if not selectedWhoName then
+			return
+		end
+
+		if GuildInvite then
+			GuildInvite(selectedWhoName)
+		elseif InviteToGuild then
+			InviteToGuild(selectedWhoName)
+		end
+	end)
+
+	return button
+end
+
+local function WhoFrameButtonOnClick(self)
+	local name = _G[self:GetName()..'Name']:GetText()
+	if name and name ~= '' then
+		selectedWhoName = name
+	end
+end
+
 local function UpdateWhoList()
 	local numWhos = C_FriendList_GetNumWhoResults()
 	if numWhos == 0 then return end
@@ -228,12 +258,16 @@ function S:FriendsFrame()
 	_G.WhoFrameEditBox:Point('BOTTOM', -3, 29)
 	_G.WhoFrameEditBox:Size(332, 18)
 
+	local guildInviteButton = AddWhoFrameGuildInviteButton()
+	S:HandleButton(guildInviteButton)
+	guildInviteButton:Point('RIGHT', _G.WhoFrameGroupInviteButton, 'LEFT', -2, 0)
+
 	S:HandleButton(_G.WhoFrameWhoButton)
 	_G.WhoFrameWhoButton:Point('RIGHT', _G.WhoFrameAddFriendButton, 'LEFT', -2, 0)
 	_G.WhoFrameWhoButton:Width(90)
 
 	S:HandleButton(_G.WhoFrameAddFriendButton)
-	_G.WhoFrameAddFriendButton:Point('RIGHT', _G.WhoFrameGroupInviteButton, 'LEFT', -2, 0)
+	_G.WhoFrameAddFriendButton:Point('RIGHT', guildInviteButton, 'LEFT', -2, 0)
 
 	S:HandleButton(_G.WhoFrameGroupInviteButton)
 	_G.WhoFrameGroupInviteButton:Point('BOTTOMRIGHT', -6, 4)
@@ -259,6 +293,7 @@ function S:FriendsFrame()
 		button.icon:CreateBackdrop(nil, true, nil, nil, nil, nil, nil, button.icon)
 
 		S:HandleButtonHighlight(button)
+		button:HookScript('OnClick', WhoFrameButtonOnClick)
 
 		level:ClearAllPoints()
 		level:SetPoint('TOPLEFT', 11, -1)
