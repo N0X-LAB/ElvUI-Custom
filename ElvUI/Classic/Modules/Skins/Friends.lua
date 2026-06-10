@@ -9,6 +9,7 @@ local BNFeaturesEnabled = BNFeaturesEnabled
 local GetGuildRosterInfo = GetGuildRosterInfo
 local GetQuestDifficultyColor = GetQuestDifficultyColor
 local hooksecurefunc = hooksecurefunc
+local C_Timer_After = C_Timer and C_Timer.After
 
 local GUILDMEMBERS_TO_DISPLAY = GUILDMEMBERS_TO_DISPLAY
 local C_FriendList_GetNumWhoResults = C_FriendList.GetNumWhoResults
@@ -51,7 +52,7 @@ local function AcquireInvitePool(pool)
 	end
 end
 
-local selectedWhoName
+local selectedWhoName, selectedWhoWhoIndex, lastSelectedWhoButton
 
 local function AddWhoFrameGuildInviteButton()
 	if _G.WhoFrameGuildInviteButton then return _G.WhoFrameGuildInviteButton end
@@ -69,6 +70,48 @@ local function AddWhoFrameGuildInviteButton()
 		elseif InviteToGuild then
 			InviteToGuild(selectedWhoName)
 		end
+
+		local function AdvanceWhoSelection()
+			if (not selectedWhoWhoIndex or type(selectedWhoWhoIndex) ~= 'number') and selectedWhoName and selectedWhoName ~= '' then
+				for i = 1, (_G.WHOS_TO_DISPLAY or 17) do
+					local b = _G['WhoFrameButton'..i]
+					if b then
+						local n = _G[b:GetName()..'Name']:GetText()
+						if n == selectedWhoName then
+							selectedWhoWhoIndex = b.whoIndex or i
+							break
+						end
+					end
+				end
+			end
+
+			local nextWhoIndex = selectedWhoWhoIndex and type(selectedWhoWhoIndex) == 'number' and (selectedWhoWhoIndex + 1)
+			if nextWhoIndex then
+				for i = 1, (_G.WHOS_TO_DISPLAY or 17) do
+					local btn = _G['WhoFrameButton'..i]
+					if btn and btn.whoIndex == nextWhoIndex then
+						if lastSelectedWhoButton and lastSelectedWhoButton ~= btn then
+							lastSelectedWhoButton:UnlockHighlight()
+						end
+						btn:Click()
+						btn:LockHighlight()
+						lastSelectedWhoButton = btn
+						local name = _G[btn:GetName()..'Name']:GetText()
+						if name and name ~= '' then
+							selectedWhoName = name
+							selectedWhoWhoIndex = nextWhoIndex
+						end
+						break
+					end
+				end
+			end
+		end
+
+		if C_Timer_After then
+			C_Timer_After(0, AdvanceWhoSelection)
+		else
+			AdvanceWhoSelection()
+		end
 	end)
 
 	return button
@@ -79,6 +122,17 @@ local function WhoFrameButtonOnClick(self)
 	if name and name ~= '' then
 		selectedWhoName = name
 	end
+
+	local idx = self.whoIndex or tonumber(self:GetName():match('WhoFrameButton(%d+)'))
+	if idx then
+		selectedWhoWhoIndex = idx
+	end
+
+	if lastSelectedWhoButton and lastSelectedWhoButton ~= self then
+		lastSelectedWhoButton:UnlockHighlight()
+	end
+	self:LockHighlight()
+	lastSelectedWhoButton = self
 end
 
 local function UpdateWhoList()
@@ -305,13 +359,16 @@ function S:FriendsFrame()
 
 	local guildInviteButton = AddWhoFrameGuildInviteButton()
 	S:HandleButton(guildInviteButton)
+	guildInviteButton:ClearAllPoints()
 	guildInviteButton:Point('RIGHT', _G.WhoFrameGroupInviteButton, 'LEFT', -2, 0)
 
 	S:HandleButton(_G.WhoFrameWhoButton)
+	_G.WhoFrameWhoButton:ClearAllPoints()
 	_G.WhoFrameWhoButton:Point('RIGHT', _G.WhoFrameAddFriendButton, 'LEFT', -2, 0)
 	_G.WhoFrameWhoButton:Width(90)
 
 	S:HandleButton(_G.WhoFrameAddFriendButton)
+	_G.WhoFrameAddFriendButton:ClearAllPoints()
 	_G.WhoFrameAddFriendButton:Point('RIGHT', guildInviteButton, 'LEFT', -2, 0)
 
 	S:HandleButton(_G.WhoFrameGroupInviteButton)
